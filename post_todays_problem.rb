@@ -2,6 +2,9 @@ require 'faraday'
 require 'faraday_middleware'
 require 'json'
 
+slack_webhook_url = ENV["SLACK_WEBHOOK_URL"]
+sheet_db_api_id = ENV["SHEET_DB_API_ID"]
+
 http_client = Faraday.new do |faraday|
     faraday.request :json
     faraday.response :json, :parser_options => { :symbolize_names => true }, :content_type => /\bjson$/
@@ -17,7 +20,7 @@ target_problems = response.body
     }
     .each{|problem_id, _| problems[problem_id][:ac_count] = 0}
 
-response = http_client.get("https://sheetdb.io/api/v1/94yas0dhpz44s")
+response = http_client.get("https://sheetdb.io/api/v1/#{sheet_db_api_id}")
 raise "Failed to fetch user ids" if !response.success?
 users = response.body
 users_acs = users.map { |user|
@@ -53,7 +56,7 @@ puts "todays_problem is "
 pp todays_problem
 
 response = http_client.post do |req|
-    req.url  ENV["SLACK_WEBHOOK_URL"]
+    req.url slack_webhook_url
     req.body = {
         text: "<https://atcoder.jp/contests/#{todays_problem[:contest_id]}/tasks/#{todays_problem[:id]}|#{todays_problem[:title]}>",
         blocks: [
