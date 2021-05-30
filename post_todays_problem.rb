@@ -55,10 +55,20 @@ todays_problem[:difficulty] = todays_problem_diff
 puts "todays_problem is "
 pp todays_problem
 
+diff_color_emoji = case todays_problem[:difficulty]
+          when 0..399 then ":atcoder_grey:"
+          when 400..799 then ":atcoder_brown:"
+          when 800...1199 then ":atcoder_green:"
+          when 1200...1599 then ":atcoder_cyan:"
+          when 1600...1999 then ":atcoder_blue:"
+          when 2000...2399 then ":atcoder_yellow:"
+          when 2400...2800 then ":atcoder_orange:"
+          else ":atcoder_red:"
+          end
+
 response = http_client.post do |req|
     req.url slack_webhook_url
     req.body = {
-        text: "<https://atcoder.jp/contests/#{todays_problem[:contest_id]}/tasks/#{todays_problem[:id]}|#{todays_problem[:title]}>",
         blocks: [
             {
                 type: :section,
@@ -69,26 +79,28 @@ response = http_client.post do |req|
                 }
             },
             {
-                type: :divider
-            },
-            {
                 type: :section,
                 text: {
                     type: :mrkdwn,
-                    text: "*<https://atcoder.jp/contests/#{todays_problem[:contest_id]}/tasks/#{todays_problem[:id]}|#{todays_problem[:contest_id]} - #{todays_problem[:title]}>* (diff: #{todays_problem[:difficulty]})"
+                    text: "#{diff_color_emoji} *<https://atcoder.jp/contests/#{todays_problem[:contest_id]}/tasks/#{todays_problem[:id]}|#{todays_problem[:contest_id]} - #{todays_problem[:title]}>* \n得点:  #{todays_problem[:point].to_i} \ndiff: #{todays_problem[:difficulty]}"
                 },
-                accessory: {
-                    type: :button,
-                    text: {
-                        type: :plain_text,
-                        text: "解く",
-                        emoji: true
-                    },
-                    url: "https://atcoder.jp/contests/#{todays_problem[:contest_id]}/tasks/#{todays_problem[:id]}"
-                }
             },
             {
                 type: :divider
+            },
+            {
+                type: :actions,
+                elements: [
+                    {
+                        type: :button,
+                        text: {
+                            type: :plain_text,
+                            text: "解く",
+                            emoji: true
+                        },
+                        url: "https://atcoder.jp/contests/#{todays_problem[:contest_id]}/tasks/#{todays_problem[:id]}"
+                    },
+                ]
             }
         ]
     }
