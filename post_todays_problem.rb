@@ -2,13 +2,13 @@ require 'faraday'
 require 'faraday_middleware'
 require 'json'
 
-conn = Faraday.new do |faraday|
+http_client = Faraday.new do |faraday|
     faraday.request :json
     faraday.response :json, :parser_options => { :symbolize_names => true }, :content_type => /\bjson$/
     faraday.adapter Faraday.default_adapter
 end
 
-response = conn.get("https://kenkoooo.com/atcoder/resources/problem-models.json")
+response = http_client.get("https://kenkoooo.com/atcoder/resources/problem-models.json")
 raise "Failed to fetch problem list" if !response.success?
 problems = response.body
 target_problems = response.body
@@ -17,12 +17,12 @@ target_problems = response.body
     }
     .each{|problem_id, _| problems[problem_id][:ac_count] = 0}
 
-response = conn.get("https://sheetdb.io/api/v1/94yas0dhpz44s")
+response = http_client.get("https://sheetdb.io/api/v1/94yas0dhpz44s")
 raise "Failed to fetch user ids" if !response.success?
 users = response.body
 users_acs = users.map { |user|
     user_id = user[:user_id]
-    response = conn.get("https://kenkoooo.com/atcoder/atcoder-api/results?user=#{user_id}")
+    response = http_client.get("https://kenkoooo.com/atcoder/atcoder-api/results?user=#{user_id}")
     if response.success?
         response.body
             .select{|sub| sub[:result] == "AC"}
@@ -33,7 +33,7 @@ users_acs = users.map { |user|
 }.compact.flatten
 
 users_acs.each do |ac|
-    target_problems[ac[:problem_id]] += 1 if target_problems[ac[:problem_id]]
+    target_problems[ac[:problem_id]][:ac_count] += 1 if target_problems[ac[:problem_id]]
 end
 
 ac_count, least_solved_problems = target_problems.group_by{|problem_id, _| target_problems[problem_id][:ac_count]}.sort[0]
@@ -43,7 +43,7 @@ raise "All candidate problems are solved by all members!" if ac_count == users.l
 todays_problem_id = least_solved_problems.sample[0]
 todays_problem_diff = target_problems[todays_problem_id][:difficulty]
 
-response = conn.get("https://kenkoooo.com/atcoder/resources/merged-problems.json")
+response = http_client.get("https://kenkoooo.com/atcoder/resources/merged-problems.json")
 raise "Failed to fetch problem information" if !response.success?
 
 todays_problem = response.body.find {|problem| problem[:id] == todays_problem_id.to_s}
@@ -52,7 +52,7 @@ todays_problem[:difficulty] = todays_problem_diff
 puts "todays_problem is "
 pp todays_problem
 
-response = conn.post do |req|
+response = http_client.post do |req|
     req.url  ENV["SLACK_WEBHOOK_URL"]
     req.body = {
         text: "<https://atcoder.jp/contests/#{todays_problem[:contest_id]}/tasks/#{todays_problem[:id]}|#{todays_problem[:title]}>",
