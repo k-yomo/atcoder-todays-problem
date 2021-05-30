@@ -17,7 +17,7 @@ def run(args)
         }
         .each{|problem| problem[:ac_count] = 0}
     
-    response = conn.get("https://sheetdb.io/api/v1/iywg2l8ie54bt")
+    response = conn.get("https://sheetdb.io/api/v1/94yas0dhpz44s")
     raise "Failed to aquire IDs" if !response.success?
     users = response.body
     users_acs = users.map { |user|
