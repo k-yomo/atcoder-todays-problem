@@ -26,8 +26,5 @@ DEPENDENCIES
   faraday
   faraday_middleware
 
-RUBY VERSION
-   ruby 2.6.5p114
-
 BUNDLED WITH
    1.17.2
