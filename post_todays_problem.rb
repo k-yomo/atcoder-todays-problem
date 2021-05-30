@@ -2,89 +2,93 @@ require 'faraday'
 require 'faraday_middleware'
 require 'json'
 
-def run(args)
-    conn = Faraday.new do |faraday|
-        faraday.request :json
-        faraday.response :json, :parser_options => { :symbolize_names => true }, :content_type => /\bjson$/
-        faraday.adapter Faraday.default_adapter
+conn = Faraday.new do |faraday|
+    faraday.request :json
+    faraday.response :json, :parser_options => { :symbolize_names => true }, :content_type => /\bjson$/
+    faraday.adapter Faraday.default_adapter
+end
+
+response = conn.get("https://kenkoooo.com/atcoder/resources/problem-models.json")
+raise "Failed to fetch problem list" if !response.success?
+problems = response.body
+target_problems = response.body
+    .select{|problem_id, diff_info|
+       diff_info[:difficulty] && diff_info[:difficulty] >= 600 && diff_info[:difficulty] <= 1200
+    }
+    .each{|problem_id, _| problems[problem_id][:ac_count] = 0}
+
+response = conn.get("https://sheetdb.io/api/v1/94yas0dhpz44s")
+raise "Failed to fetch user ids" if !response.success?
+users = response.body
+users_acs = users.map { |user|
+    user_id = user[:user_id]
+    response = conn.get("https://kenkoooo.com/atcoder/atcoder-api/results?user=#{user_id}")
+    if response.success?
+        response.body
+            .select{|sub| sub[:result] == "AC"}
+            .uniq{|sub| [sub[:problem_id], sub[:user_id]]}
+    else
+        nil
     end
+}.compact.flatten
 
-    response = conn.get("https://kenkoooo.com/atcoder/resources/merged-problems.json")
-    raise "Failed to aquire problem list" if !response.success?
-    problems = response.body
-        .select{|problem| 
-            ["abc", "agc"].include?(problem[:contest_id][0..2]) && problem[:point] && problem[:point] <= 400
-        }
-        .each{|problem| problem[:ac_count] = 0}
-    
-    response = conn.get("https://sheetdb.io/api/v1/94yas0dhpz44s")
-    raise "Failed to aquire IDs" if !response.success?
-    users = response.body
-    users_acs = users.map { |user|
-        user_id = user[:user_id]
-        response = conn.get("https://kenkoooo.com/atcoder/atcoder-api/results?user=#{user_id}")
-        if response.success?
-            response.body
-                .select{|sub| sub[:result] == "AC"}
-                .uniq{|sub| [sub[:problem_id], sub[:user_id]]}
-        else
-            nil
-        end
-    }.compact.flatten
-    
-    users_acs.each do |ac|
-        problem_idx = problems.find_index{|problem| problem[:id] == ac[:problem_id]}
-        problems[problem_idx][:ac_count] += 1 if problem_idx
-    end
+users_acs.each do |ac|
+    target_problems[ac[:problem_id]] += 1 if target_problems[ac[:problem_id]]
+end
 
-    ac_count, least_solved_problems = problems.group_by{|problem| problem[:ac_count]}.sort[0]
+ac_count, least_solved_problems = target_problems.group_by{|problem_id, _| target_problems[problem_id][:ac_count]}.sort[0]
 
-    raise "All candidate problems are solved by all members!" if ac_count == users.length
-    
-    todays_problem = least_solved_problems.sample
+raise "All candidate problems are solved by all members!" if ac_count == users.length
 
-    puts "todays_problem is "
-    pp todays_problem
-    
-    response = conn.post do |req|
-        req.url  ENV["RCODER_SLACK_WEBHOOK"]
-        req.body = {
-            text: "<https://atcoder.jp/contests/#{todays_problem[:contest_id]}/tasks/#{todays_problem[:id]}|#{todays_problem[:title]}>",
-            blocks: [
-                {
-                    type: :section,
+todays_problem_id = least_solved_problems.sample[0]
+todays_problem_diff = target_problems[todays_problem_id][:difficulty]
+
+response = conn.get("https://kenkoooo.com/atcoder/resources/merged-problems.json")
+raise "Failed to fetch problem information" if !response.success?
+
+todays_problem = response.body.find {|problem| problem[:id] == todays_problem_id.to_s}
+todays_problem[:difficulty] = todays_problem_diff
+
+puts "todays_problem is "
+pp todays_problem
+
+response = conn.post do |req|
+    req.url  ENV["SLACK_WEBHOOK_URL"]
+    req.body = {
+        text: "<https://atcoder.jp/contests/#{todays_problem[:contest_id]}/tasks/#{todays_problem[:id]}|#{todays_problem[:title]}>",
+        blocks: [
+            {
+                type: :section,
+                text: {
+                    type: :plain_text,
+                    text: "今日の一問はこれだ！！:dart:",
+                    emoji: true
+                }
+            },
+            {
+                type: :divider
+            },
+            {
+                type: :section,
+                text: {
+                    type: :mrkdwn,
+                    text: "*<https://atcoder.jp/contests/#{todays_problem[:contest_id]}/tasks/#{todays_problem[:id]}|#{todays_problem[:contest_id]} - #{todays_problem[:title]}>* (diff: #{todays_problem[:difficulty]})"
+                },
+                accessory: {
+                    type: :button,
                     text: {
                         type: :plain_text,
-                        text: "Let's solve this today!",
+                        text: "解く",
                         emoji: true
-                    }
-                },
-                {
-                    type: :divider
-                },
-                {
-                    type: :section,
-                    text: {
-                        type: :mrkdwn,
-                        text: "*<https://atcoder.jp/contests/#{todays_problem[:contest_id]}/tasks/#{todays_problem[:id]}|#{todays_problem[:title]}>* (Points: #{todays_problem[:point].to_i})"
                     },
-                    accessory: {
-                        type: :button,
-                        text: {
-                            type: :plain_text,
-                            text: "Open",
-                            emoji: true
-                        },
-                        url: "https://atcoder.jp/contests/#{todays_problem[:contest_id]}/tasks/#{todays_problem[:id]}"
-                    }
-                },
-                {
-                    type: :divider
+                    url: "https://atcoder.jp/contests/#{todays_problem[:contest_id]}/tasks/#{todays_problem[:id]}"
                 }
-            ]
-        }
-    end
-    raise "Failed to send message to Slack" if !response.success?
-
-    return todays_problem
+            },
+            {
+                type: :divider
+            }
+        ]
+    }
 end
+raise "Failed to send message to Slack" if !response.success?
+
