@@ -36,7 +36,8 @@ users_acs = users.map { |user|
 }.compact.flatten
 
 users_acs.each do |ac|
-    target_problems[ac[:problem_id]][:ac_count] += 1 if target_problems[ac[:problem_id]]
+    problem_id = ac[:problem_id].to_sym
+    target_problems[problem_id][:ac_count] += 1 if target_problems[problem_id]
 end
 
 ac_count, least_solved_problems = target_problems.group_by{|problem_id, _| target_problems[problem_id][:ac_count]}.sort[0]
