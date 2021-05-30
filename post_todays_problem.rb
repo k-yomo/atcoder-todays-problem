@@ -62,7 +62,7 @@ diff_color_emoji = case todays_problem[:difficulty]
           when 1200...1599 then ":atcoder_cyan:"
           when 1600...1999 then ":atcoder_blue:"
           when 2000...2399 then ":atcoder_yellow:"
-          when 2400...2800 then ":atcoder_orange:"
+          when 2400...2799 then ":atcoder_orange:"
           else ":atcoder_red:"
           end
 
