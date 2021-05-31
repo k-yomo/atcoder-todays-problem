@@ -83,7 +83,7 @@ response = http_client.post do |req|
                 type: :section,
                 text: {
                     type: :mrkdwn,
-                    text: "#{diff_color_emoji} *<https://atcoder.jp/contests/#{todays_problem[:contest_id]}/tasks/#{todays_problem[:id]}|#{todays_problem[:contest_id]} - #{todays_problem[:title]}>* \n得点:  #{todays_problem[:point].to_i} \ndiff: #{todays_problem[:difficulty]}"
+                    text: "#{diff_color_emoji} *<https://atcoder.jp/contests/#{todays_problem[:contest_id]}/tasks/#{todays_problem[:id]}|#{todays_problem[:contest_id]} - #{todays_problem[:title]}>* \n得点: #{todays_problem[:point] ? todays_problem[:point].to_i : '-'} \ndiff: #{todays_problem[:difficulty]}"
                 },
             },
             {
