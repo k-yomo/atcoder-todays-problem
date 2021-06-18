@@ -16,7 +16,8 @@ raise "Failed to fetch problem list" if !response.success?
 problems = response.body
 target_problems = response.body
     .select{|problem_id, diff_info|
-       diff_info[:difficulty] && diff_info[:difficulty] >= 800 && diff_info[:difficulty] <= 1400
+       # select from brown
+       diff_info[:difficulty] && diff_info[:difficulty] >= 400 && diff_info[:difficulty] < 800
     }
     .each{|problem_id, _| problems[problem_id][:ac_count] = 0}
 
